@@ -19,10 +19,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 
 public class CsvExternalSortTest {
+	private static final String FILE_BATCH1_CSV = "batch1.csv";
+	private static final String FILE_BATCH2_CSV = "batch2.csv";
 	private static final String FILE_CSV = "externalSorting.csv";
 	private static final String FILE_UNICODE_CSV = "nonLatinSorting.csv";
 
@@ -179,6 +182,32 @@ public class CsvExternalSortTest {
 
 		assertEquals("personId,text,ishired", lines.get(0));
 		assertEquals("6,this wont work in other systems,3", lines.get(1));
+	}
+
+	@Test
+	public void testMergeSortedFilesWithHeader() throws IOException, ClassNotFoundException {
+		String batch1Path = this.getClass().getClassLoader().getResource(FILE_BATCH1_CSV).getPath();
+		File batch1File = new File(batch1Path);
+		String batch2Path = this.getClass().getClassLoader().getResource(FILE_BATCH2_CSV).getPath();
+		File batch2File = new File(batch2Path);
+
+		outputfile = new File("outputSort1.csv");
+
+		Comparator<CSVRecord> comparator = (op1, op2) ->
+			Integer.valueOf(op1.iterator().next()).compareTo(Integer.valueOf(op2.iterator().next()));
+
+		CsvSortOptions sortOptions = new CsvSortOptions
+				.Builder(comparator, CsvExternalSort.DEFAULTMAXTEMPFILES, CsvExternalSort.estimateAvailableMemory())
+				.charset(Charset.defaultCharset())
+				.distinct(false)
+				.numHeader(1)
+				.skipHeader(false)
+				.format(CSVFormat.DEFAULT)
+				.build();
+
+		List<File> sortInBatch = asList(batch1File, batch2File);
+
+		CsvExternalSort.mergeSortedFiles(sortInBatch, outputfile, sortOptions, true);
 	}
 
 	@After
